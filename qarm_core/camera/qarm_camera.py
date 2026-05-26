@@ -155,10 +155,18 @@ class QArmCamera:
     def read_display_frames(self):
         """Read RGB and depth frames for display without blinking on dropouts."""
 
-        rgb, depth_m = self.read()
+        rgb = self.read_rgb()
 
-        if depth_m is not None:
-            self.last_depth_display = self.depth_m_to_display(depth_m)
+        if self.hardware:
+            depth_m = self.read_depth_m()
+            if depth_m is not None:
+                new_display = self.depth_m_to_display(depth_m)
+                if np.count_nonzero(new_display) > 50:
+                    self.last_depth_display = new_display
+        else:
+            depth_px = self.read_depth_px()
+            if depth_px is not None:
+                self.last_depth_display = self.depth_px_to_display(depth_px)
 
         return rgb, self.last_depth_display
 
@@ -168,4 +176,3 @@ class QArmCamera:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
