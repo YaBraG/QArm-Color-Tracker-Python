@@ -1,39 +1,63 @@
 # QArm Color Tracker Python
 
-A Python project for experimenting with Quanser QArm control and camera-based
-color tracking.
+A Python project for controlling a physical Quanser QArm, mirroring it into
+QLabs Virtual QArm, and reading QArm RealSense camera data for future color
+tracking.
 
-## Overview
+## Current Working Features
 
-This repository contains a small QArm control wrapper, camera utilities, and a
-simple `main.py` entry point for testing arm movement and sensor reads. It is
-intended for use with Quanser hardware or a compatible Quanser virtual QArm
-setup.
+- Physical QArm connects through `qarm.py`
+- QLabs virtual QArm connects through `virtual_qarm.py`
+- `qarm_mimic.py` synchronizes real joint positions to the virtual arm
+- QLabs can display the virtual QArm and virtual camera
+- Physical RealSense can be read through `QArmRealSense` and the future
+  `qarm_core.camera.QArmCamera` wrapper
 
-## Requirements
+## Important Camera Limitation
 
-- Python 3
-- NumPy
-- Quanser Python libraries
-- Quanser QArm hardware or virtual QArm environment
+Physical RealSense images do not appear inside the built-in black camera panels
+in QLabs. Those QLabs panels are tied to the virtual camera stream. Physical
+camera frames should be displayed or processed in Python/OpenCV.
 
-## Project Structure
+## New Library Structure
 
-- `main.py` - basic entry point for running QArm experiments
-- `qarm.py` - QArm hardware interface and RealSense camera wrapper
-- `utilities/` - helper modules for vision, timing, streaming, input, and math
+The current root files are still in place so existing working scripts keep
+running. New reusable code is being added under `qarm_core/` for cleaner future
+development.
 
-## Running
+- `qarm_core/config.py` - shared device IDs, ports, camera settings, poses,
+  gripper values, and LED colors
+- `qarm_core/camera/qarm_camera.py` - lazy-opening wrapper around
+  `QArmRealSense` with last-valid-frame handling
+- `qarm_core/motion/qarm_motion.py` - high-level motion controller for an
+  already-open physical or virtual QArm object
+- `qarm_core/safety/qarm_safety.py` - numeric safety checks for joint indexes,
+  deltas, full joint vectors, and gripper commands
 
-Install the required Quanser tools and Python dependencies, connect or start the
-QArm environment, then run:
+## Basic Running
+
+Install the required Quanser tools and Python dependencies first.
+
+Before using the virtual arm, open the QLabs QArm Workspace. Before using real
+hardware, power and connect the physical QArm.
+
+Run the current entry point:
 
 ```bash
 python main.py
 ```
 
-## Notes
+## Safety Notes
 
-This project is an early color-tracking and QArm-control workspace. Update
-`main.py` as needed for your specific tracking routine, hardware configuration,
-or virtual QArm setup.
+- Keep a hand near the power switch while testing hardware.
+- Start with small movements.
+- Do not send large joint commands.
+- `qarm_core.safety` does not silently clip arm joints. Unsafe joint commands
+  raise errors instead.
+- Gripper commands may be clamped to the safe `0.1` to `0.9` range.
+
+## Future Planned Modules
+
+- `color_tracker.py`
+- `trajectory_recorder.py`
+- `main.py` integration update
