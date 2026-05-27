@@ -14,7 +14,7 @@ CAMERA_HEIGHT = 480
 CAMERA_FPS = 30
 
 DEPTH_MIN_M = 0.15
-DEPTH_MAX_M = 2.0
+DEPTH_MAX_M = 3.0
 
 HOME_POSE = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
 SLEEP_POSE = np.array(
