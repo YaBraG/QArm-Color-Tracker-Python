@@ -2,6 +2,12 @@
 
 ## 2026-05-27
 
+- Renamed `depth_alignment.py` to `depth_sampling.py`.
+- Clarified that RealSense alignment happens in `realsense_aligned_camera.py`.
+- Kept `depth_sampling.py` as the single reusable library for distance sampling from aligned depth.
+- Updated imports and documentation.
+- Removed the old misleading `depth_alignment.py` filename.
+
 - Refactored `depth_alignment.py` into a reusable aligned-depth sampling library.
 - Removed interactive OpenCV feed/crosshair/keyboard logic from `depth_alignment.py`.
 - Removed manual Quanser offset backend from `depth_alignment.py`.

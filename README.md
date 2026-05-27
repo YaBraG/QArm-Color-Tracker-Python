@@ -15,7 +15,7 @@ yet in the current codebase.
   camera frames.
 - `qarm_core/camera/realsense_aligned_camera.py` reads physical RealSense frames
   with depth aligned to the color image by `pyrealsense2`.
-- `qarm_core/camera/depth_alignment.py` samples distance from an already-aligned
+- `qarm_core/camera/depth_sampling.py` samples distance from an already-aligned
   depth frame.
 
 The root scripts are kept in place so existing classroom or lab workflows still
@@ -46,14 +46,16 @@ camera and returns:
 - `color_bgr`: an OpenCV-ready color frame
 - `aligned_depth_m`: depth in meters aligned to the color frame
 
-`qarm_core/camera/depth_alignment.py` is now a reusable library for sampling
+`qarm_core/camera/depth_sampling.py` is a reusable helper library for sampling
 distance from an already-aligned depth frame. It does not open cameras, create
 OpenCV windows, draw crosshairs, show overlays, or handle keyboard controls.
 Those UI pieces should be handled later by `main.py` or another
 application-level program.
 
 The old manual Quanser pixel-offset workflow was removed from
-`depth_alignment.py` because fixed offsets change with distance due to parallax.
+the sampling helpers because fixed offsets change with distance due to parallax.
+The old `depth_alignment.py` name was removed because it no longer described
+the file correctly.
 `qarm_core/camera/qarm_camera.py` still exists for Quanser Camera3D and QLabs
 compatibility.
 
@@ -61,7 +63,7 @@ Example aligned-depth use:
 
 ```python
 from qarm_core.camera.realsense_aligned_camera import RealSenseAlignedCamera
-from qarm_core.camera.depth_alignment import get_depth_at_rgb_pixel
+from qarm_core.camera.depth_sampling import get_depth_at_rgb_pixel
 
 camera = RealSenseAlignedCamera()
 camera.open()
@@ -107,7 +109,7 @@ python main.py
   frame reader
 - `qarm_core/camera/realsense_aligned_camera.py` - physical RealSense aligned
   depth reader
-- `qarm_core/camera/depth_alignment.py` - aligned-depth distance sampling helpers
+- `qarm_core/camera/depth_sampling.py` - aligned-depth distance sampling helpers
 - `qarm_core/motion/qarm_motion.py` - high-level motion helper for an open QArm
 - `qarm_core/safety/qarm_safety.py` - beginner-readable command safety checks
 
