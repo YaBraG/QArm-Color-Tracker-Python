@@ -15,6 +15,8 @@ CAMERA_FPS = 30
 
 DEPTH_MIN_M = 0.15
 DEPTH_MAX_M = 3.0
+DEPTH_X_OFFSET = -25
+DEPTH_Y_OFFSET = -3
 
 HOME_POSE = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
 SLEEP_POSE = np.array(
@@ -29,4 +31,3 @@ LED_OFF = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 LED_RED = np.array([1.0, 0.0, 0.0], dtype=np.float64)
 LED_GREEN = np.array([0.0, 1.0, 0.0], dtype=np.float64)
 LED_BLUE = np.array([0.0, 0.0, 1.0], dtype=np.float64)
-
