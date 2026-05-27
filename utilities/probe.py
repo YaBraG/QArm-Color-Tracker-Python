@@ -46,7 +46,7 @@ class Probe():
             )
 
         if name == 'display':
-            name = 'display_'+str(self.numDisplays)
+            name = f'display_{self.numDisplays}'
         # agent type => 0
         self.agents[name] = (_display, 0)
 
@@ -66,7 +66,7 @@ class Probe():
                            scalingFactor = scalingFactor)
 
         if name == 'plot':
-            name = 'plot_'+str(self.numDisplays)
+            name = f'plot_{str(self.numDisplays)}'
         # agent type => 1
         self.agents[name] = (_plot, 1)
 
@@ -81,7 +81,7 @@ class Probe():
         _scope = RemoteScope(numSignals=numSignals, id=self.numScopes, ip=self.remoteHostIP)
 
         if name == 'scope':
-            name = 'scope_'+str(self.numDisplays)
+            name = f'scope_{str(self.numDisplays)}'
         # agent type => 2
         self.agents[name] = (_scope, 2)
 
@@ -96,7 +96,7 @@ class Probe():
         _xyscope = RemoteXYScope(numSignals=numSignals, id=self.numScopes, ip=self.remoteHostIP)
 
         if name == 'xyscope':
-            name = 'xyscope_'+str(self.numDisplays)
+            name = f'xyscope_{str(self.numDisplays)}'
         # agent type => 3
         self.agents[name] = (_xyscope, 3)
 
@@ -203,7 +203,7 @@ class ObserverAgent():
             )
             if self.signalNames is None:
                 for i in range(self.numSignals):
-                    self.scope.attachSignal(name='signal_'+str(i+1))
+                    self.scope.attachSignal(name=f'signal_{str(i + 1)}')
             else:
                 for i in range(self.numSignals):
                     self.scope.attachSignal(name=self.signalNames[i])
@@ -223,7 +223,7 @@ class ObserverAgent():
             )
             if self.signalNames is None:
                 for i in range(self.numSignals):
-                    self.xyscope.attachSignal(name='signal_'+str(i+1))
+                    self.xyscope.attachSignal(name=f'signal_{str(i + 1)}')
             else:
                 for i in range(self.numSignals):
                     self.xyscope.attachSignal(name=self.signalNames[i])
@@ -314,16 +314,16 @@ class Observer():
         bufferSize = np.prod(imageSize)
         self.numDisplays += 1
         port = 18800+self.numDisplays
-        uriAddress  = 'tcpip://localhost:' + str(port)
+        uriAddress = f'tcpip://localhost:{str(port)}'
 
         if name is None:
-            name = 'Display '+str(self.numDisplays)
+            name = f'Display {self.numDisplays}'
 
-        properties = dict()
-        properties['imageSize'] = [imageSize[0],imageSize[1],imageSize[2]]
-        properties['scalingFactor'] = scalingFactor
-        properties['name'] = name
-
+        properties = {
+            'imageSize': [imageSize[0], imageSize[1], imageSize[2]],
+            'scalingFactor': scalingFactor,
+            'name': name,
+        }
         display = ObserverAgent(uriAddress=uriAddress,
                                 id=self.numDisplays,
                                 bufferSize=bufferSize,
@@ -343,16 +343,16 @@ class Observer():
 
         self.numPlots += 1
         port = 18600+self.numPlots
-        uriAddress  = 'tcpip://localhost:'+str(port)
+        uriAddress = f'tcpip://localhost:{str(port)}'
         if name is None:
-            name = 'Plot '+str(self.numPlots)
+            name = f'Plot {self.numPlots}'
 
-        properties = dict()
-        properties['frameSize'] = frameSize
-        properties['pixelsPerMeter'] = pixelsPerMeter
-        properties['numMeasurements'] = int(numMeasurements/scalingFactor)
-        properties['name'] = name
-
+        properties = {
+            'frameSize': frameSize,
+            'pixelsPerMeter': pixelsPerMeter,
+            'numMeasurements': int(numMeasurements / scalingFactor),
+            'name': name,
+        }
         plot = ObserverAgent(uriAddress=uriAddress,
                                 id=self.numPlots,
                                 bufferSize=int(numMeasurements * 2 * 4 / scalingFactor),
@@ -369,15 +369,15 @@ class Observer():
         self.numScopes += 1
 
         if name is None:
-            name = 'Scope '+str(self.numScopes)
+            name = f'Scope {self.numScopes}'
 
-        properties = dict()
-        properties['numSignals'] = numSignals
-        properties['name'] = name
-        properties['signalNames'] = signalNames
-
+        properties = {
+            'numSignals': numSignals,
+            'name': name,
+            'signalNames': signalNames,
+        }
         port = 18700+self.numScopes
-        uriAddress  = 'tcpip://localhost:'+str(port)
+        uriAddress = f'tcpip://localhost:{str(port)}'
         scope = ObserverAgent(uriAddress=uriAddress,
                                 id=self.numPlots,
                                 bufferSize=(numSignals + 1) * 8,
@@ -394,19 +394,19 @@ class Observer():
         self.numScopes += 1
 
         if name is None:
-            name = 'Scope '+str(self.numScopes)
+            name = f'Scope {self.numScopes}'
 
-        properties = dict()
-        properties['numSignals'] = numSignals
-        properties['name'] = name
-        properties['signalNames'] = signalNames
-        properties['xLabel'] = xLabel
-        properties['yLabel'] = yLabel
-        properties['xLim'] = xLim
-        properties['yLim'] = yLim
-
+        properties = {
+            'numSignals': numSignals,
+            'name': name,
+            'signalNames': signalNames,
+            'xLabel': xLabel,
+            'yLabel': yLabel,
+            'xLim': xLim,
+            'yLim': yLim,
+        }
         port = 18500+self.numScopes
-        uriAddress  = 'tcpip://localhost:'+str(port)
+        uriAddress = f'tcpip://localhost:{str(port)}'
 
         xyscope = ObserverAgent(uriAddress=uriAddress,
                                 id=self.numPlots,
@@ -432,14 +432,14 @@ class Observer():
                     break
                 if flag:
                     agent.process()
-                    if agent.agentType == 0 or agent.agentType == 1:
+                    if agent.agentType in [0, 1]:
                         cv2.waitKey(1)
 
     def launch(self):
         refreshFlag = False
 
         for index, agent in enumerate(self.agentList):
-            if agent.agentType == 2 or agent.agentType == 3:
+            if agent.agentType in [2, 3]:
                 refreshFlag = True
                 scopeIdx = index
             self.agentThreads.append(Thread(target=self.thread_function, args=[index]))
@@ -494,7 +494,7 @@ class RemoteDisplay: # works as a client
 
         id = np.clip(id,0,80)
         port = 18800+id
-        uriAddress  = 'tcpip://' + str(ip) + ':' + str(port)
+        uriAddress = f'tcpip://{str(ip)}:{str(port)}'
 
         self.client = BasicStream(uriAddress, agent='C',
                                   sendBufferSize=bufferSize,
@@ -523,10 +523,7 @@ class RemoteDisplay: # works as a client
                 sent = self.client.send(image2)
             else:
                 sent = self.client.send(image)
-            if sent == -1:
-                return False
-            else:
-                return True
+            return sent != -1
 
     def terminate(self):
         '''Terminates the connection.'''
@@ -549,7 +546,7 @@ class RemotePlot: # works as a client
             self.numMeasurements = int(numMeasurements/self.scalingFactor)
         bufferSize = self.numMeasurements * 2 * 4 # 4 bytes per float and 2 for distances + angles
         port = 18600+id
-        uriAddress  = 'tcpip://' + ip + ':'+ str(port)
+        uriAddress = f'tcpip://{ip}:{str(port)}'
         self.client = BasicStream(uriAddress, agent='C',
                                   sendBufferSize=bufferSize,
                                   nonBlocking=True)
@@ -572,10 +569,7 @@ class RemotePlot: # works as a client
             else:
                 data = np.concatenate((np.reshape(distances, (-1, 1)), np.reshape(angles, (-1, 1))), axis=1)
             result = self.client.send(data)
-            if result == -1:
-                return False
-            else:
-                return True
+            return result != -1
 
     def terminate(self):
         '''Terminates the connection.'''
@@ -592,7 +586,7 @@ class RemoteScope():
         self.numMeasurements = numSignals
         bufferSize = (self.numMeasurements+1) * 8 # 8 bytes per double
         port = 18700+id
-        uriAddress  = 'tcpip://' + ip + ':'+ str(port)
+        uriAddress = f'tcpip://{ip}:{str(port)}'
         self.client = BasicStream(uriAddress, agent='C',
                                   sendBufferSize=bufferSize,
                                   nonBlocking=True)
@@ -612,10 +606,7 @@ class RemoteScope():
         if self.client.connected:
             timestamp = np.array([time], dtype=np.float64)
             flag = self.client.send(np.concatenate((timestamp, data)))
-            if flag == -1:
-                return False
-            else:
-                return True
+            return flag != -1
 
     def terminate(self):
         '''Terminates the connection.'''
@@ -632,7 +623,7 @@ class RemoteXYScope():
         self.numMeasurements = numSignals
         bufferSize = (self.numMeasurements*2+1) * 8 # X Y pair for each signal + 1 timestamp, 8 bytes per double
         port = 18500+id
-        uriAddress  = 'tcpip://' + ip + ':'+ str(port)
+        uriAddress = f'tcpip://{ip}:{str(port)}'
         self.client = BasicStream(uriAddress, agent='C',
                                   sendBufferSize=bufferSize,
                                   nonBlocking=True)
@@ -652,10 +643,7 @@ class RemoteXYScope():
         if self.client.connected:
             timestamp = np.array([time], dtype=np.float64)
             flag = self.client.send(np.concatenate((timestamp, data), axis=None))
-            if flag == -1:
-                return False
-            else:
-                return True
+            return flag != -1
 
     def terminate(self):
         '''Terminates the connection.'''
