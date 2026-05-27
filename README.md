@@ -2,7 +2,7 @@
 
 Python support code for a Quanser QArm color tracking project. The repository
 currently focuses on QArm connection helpers, virtual/physical arm support, and
-camera calibration tools. Color tracking is planned, but it is not implemented
+camera distance helpers. Color tracking is planned, but it is not implemented
 yet in the current codebase.
 
 ## Current Project State
@@ -15,7 +15,8 @@ yet in the current codebase.
   camera frames.
 - `qarm_core/camera/realsense_aligned_camera.py` reads physical RealSense frames
   with depth aligned to the color image by `pyrealsense2`.
-- `qarm_core/camera/depth_alignment.py` tests depth at a clicked RGB pixel.
+- `qarm_core/camera/depth_alignment.py` samples distance from an already-aligned
+  depth frame.
 
 The root scripts are kept in place so existing classroom or lab workflows still
 run. New reusable code should go under `qarm_core/`.
@@ -34,81 +35,42 @@ blink during brief camera read dropouts.
 physical RealSense aligned-depth reads. In this mode, the returned
 `aligned_depth_m[y, x]` value matches the color pixel at `x, y`.
 
-## RGB-Depth Alignment
+## RGB-Depth Distance
 
-The RealSense RGB stream and depth stream are close, but not perfectly aligned
-when read through the Quanser Camera3D/manual-offset path. Manual testing found
-that a fixed offset works at one distance but changes significantly at another
-distance. This happens because RGB/depth parallax depends on object depth, so a
-fixed pixel offset is only a temporary approximation.
+The recommended physical-camera path for RGB-depth distance tracking is the
+RealSense aligned-depth backend.
 
-The project keeps a manual pixel offset in `qarm_core/config.py` for Quanser
-Camera3D debugging:
+`qarm_core/camera/realsense_aligned_camera.py` opens the physical RealSense
+camera and returns:
+
+- `color_bgr`: an OpenCV-ready color frame
+- `aligned_depth_m`: depth in meters aligned to the color frame
+
+`qarm_core/camera/depth_alignment.py` is now a reusable library for sampling
+distance from an already-aligned depth frame. It does not open cameras, create
+OpenCV windows, draw crosshairs, show overlays, or handle keyboard controls.
+Those UI pieces should be handled later by `main.py` or another
+application-level program.
+
+The old manual Quanser pixel-offset workflow was removed from
+`depth_alignment.py` because fixed offsets change with distance due to parallax.
+`qarm_core/camera/qarm_camera.py` still exists for Quanser Camera3D and QLabs
+compatibility.
+
+Example aligned-depth use:
 
 ```python
-DEPTH_X_OFFSET = -25
-DEPTH_Y_OFFSET = -3
+from qarm_core.camera.realsense_aligned_camera import RealSenseAlignedCamera
+from qarm_core.camera.depth_alignment import get_depth_at_rgb_pixel
+
+camera = RealSenseAlignedCamera()
+camera.open()
+
+color_bgr, aligned_depth_m = camera.read()
+result = get_depth_at_rgb_pixel(aligned_depth_m, rgb_x=371, rgb_y=330)
+
+camera.close()
 ```
-
-The Quanser backend maps a clicked RGB pixel to a depth pixel like this:
-
-```python
-depth_x = rgb_x + DEPTH_X_OFFSET
-depth_y = rgb_y + DEPTH_Y_OFFSET
-```
-
-The current saved/default Quanser manual-offset calibration is
-`DEPTH_X_OFFSET=-25` and `DEPTH_Y_OFFSET=-3` unless `qarm_core/config.py` is
-changed.
-
-The depth alignment tool has two backend modes:
-
-- `quanser`: uses Quanser Camera3D and the manual offset values above.
-- `realsense`: uses `pyrealsense2` with RealSense depth aligned to color pixels.
-
-Recommended physical distance tracking mode:
-
-```bash
-python -m qarm_core.camera.depth_alignment --hardware 1 --backend realsense
-```
-
-Quanser manual-offset debugging mode:
-
-```bash
-python -m qarm_core.camera.depth_alignment --hardware 1 --backend quanser
-```
-
-It can also be run directly from VS Code:
-
-```bash
-python qarm_core/camera/depth_alignment.py
-```
-
-If `pyrealsense2` is not installed and you want to use the RealSense aligned
-backend, install it with:
-
-```bash
-pip install pyrealsense2
-```
-
-### Alignment Controls
-
-- Left mouse click: select an RGB point
-- Right mouse click or `c`: clear selected point
-- `a`: decrease `depth_x_offset` by 1 in Quanser mode
-- `d`: increase `depth_x_offset` by 1 in Quanser mode
-- `w`: decrease `depth_y_offset` by 1 in Quanser mode
-- `s`: increase `depth_y_offset` by 1 in Quanser mode
-- `r`: reset offset to the values in `qarm_core/config.py` in Quanser mode
-- `p`: save the current offset to `qarm_core/config.py` in Quanser mode
-- `q` or Esc: quit
-
-In RealSense aligned mode, `a`, `d`, `w`, `s`, `r`, and `p` print a reminder
-that manual offsets are not used.
-
-The RGB window shows the selected image point. The depth window shows a
-colorized depth image for display only; the measured distance still comes from
-the real depth values in meters.
 
 ## Basic Running
 
@@ -121,12 +83,6 @@ python -m pip install -r requirements/requirements.txt
 ```
 
 This installs packages such as `numpy`, `opencv-python`, and `pyrealsense2`.
-The `pyrealsense2` package is required for the RealSense aligned-depth backend:
-
-```bash
-python -m qarm_core.camera.depth_alignment --hardware 1 --backend realsense
-```
-
 The RealSense backend uses the Intel RealSense SDK Python bindings and is the
 recommended physical-camera mode for RGB-depth distance tracking.
 
@@ -146,12 +102,12 @@ python main.py
 ## Reusable Package Layout
 
 - `qarm_core/config.py` - shared device IDs, ports, camera settings, depth
-  limits, Quanser manual RGB-depth offset, poses, gripper values, and LED colors
+  limits, depth sampling window size, poses, gripper values, and LED colors
 - `qarm_core/camera/qarm_camera.py` - Quanser Camera3D physical/virtual camera
   frame reader
 - `qarm_core/camera/realsense_aligned_camera.py` - physical RealSense aligned
   depth reader
-- `qarm_core/camera/depth_alignment.py` - clicked-pixel depth test tool
+- `qarm_core/camera/depth_alignment.py` - aligned-depth distance sampling helpers
 - `qarm_core/motion/qarm_motion.py` - high-level motion helper for an open QArm
 - `qarm_core/safety/qarm_safety.py` - beginner-readable command safety checks
 

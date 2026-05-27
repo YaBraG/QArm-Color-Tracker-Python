@@ -2,6 +2,13 @@
 
 ## 2026-05-27
 
+- Refactored `depth_alignment.py` into a reusable aligned-depth sampling library.
+- Removed interactive OpenCV feed/crosshair/keyboard logic from `depth_alignment.py`.
+- Removed manual Quanser offset backend from `depth_alignment.py`.
+- Removed duplicated depth sampling logic from `realsense_aligned_camera.py`.
+- Kept RealSense SDK aligned depth as the recommended physical-camera path.
+- Updated README to explain the cleaner library/application separation.
+
 - Updated requirements dependency file under `requirements/`.
 - Added `pyrealsense2` dependency for the RealSense aligned camera backend.
 - Documented dependency installation in README.
@@ -17,5 +24,4 @@
 - Added configurable RGB-to-depth offset values.
 - Added save-to-config behavior with the `p` key.
 - Added/updated README documentation for the current project state.
-- Documented the current calibration offset: `DEPTH_X_OFFSET=-25`,
-  `DEPTH_Y_OFFSET=-3`.
+- Documented the then-current manual calibration offset.

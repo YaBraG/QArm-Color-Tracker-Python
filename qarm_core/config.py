@@ -15,11 +15,7 @@ CAMERA_FPS = 30
 
 DEPTH_MIN_M = 0.15
 DEPTH_MAX_M = 3.0
-
-# These offsets are only for the Quanser Camera3D/manual-offset backend.
-# They are not used by the RealSense aligned-depth backend.
-DEPTH_X_OFFSET = -25
-DEPTH_Y_OFFSET = -3
+DEPTH_SAMPLE_WINDOW_SIZE = 7
 
 HOME_POSE = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
 SLEEP_POSE = np.array(
