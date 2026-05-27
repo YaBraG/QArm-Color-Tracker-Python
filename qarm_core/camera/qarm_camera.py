@@ -98,10 +98,7 @@ class QArmCamera:
             return None
 
         timestamp = self.camera.read_depth(dataMode="PX")
-        if timestamp != -1:
-            return self.camera.imageBufferDepthPX.copy()
-
-        return None
+        return self.camera.imageBufferDepthPX.copy() if timestamp != -1 else None
 
     def read(self):
         """Read RGB and depth-meter frames."""
