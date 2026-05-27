@@ -108,8 +108,7 @@ class LogitechF710:
                 self.trigger = 0.5 + 0.5 * data.z
                 self.flag = True
 
-        # Trigger mapping for a Linux-based system
-        if self.mode == 1:
+        elif self.mode == 1:
             if data.rz == 0 and not self.flag:
                 self.trigger = 0
             else:
@@ -126,12 +125,10 @@ class LogitechF710:
 
         # Update the arrow keys
         val = 180 * data.point_of_views[0] / np.pi
-        self.up = 0
         self.right = 0
         self.left = 0
         self.down = 0
-        if val >= 310 or (val >= 0 and val < 50):
-            self.up = 1
+        self.up = 1 if val >= 310 or (val >= 0 and val < 50) else 0
         if val >= 40 and val < 140:
             self.right = 1
         if val >= 130 and val < 230:
