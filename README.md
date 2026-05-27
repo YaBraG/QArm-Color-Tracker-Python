@@ -114,6 +114,26 @@ the real depth values in meters.
 
 Install the required Quanser tools and Python dependencies first.
 
+Python pip dependencies are listed in the existing requirements folder:
+
+```bash
+python -m pip install -r requirements/requirements.txt
+```
+
+This installs packages such as `numpy`, `opencv-python`, and `pyrealsense2`.
+The `pyrealsense2` package is required for the RealSense aligned-depth backend:
+
+```bash
+python -m qarm_core.camera.depth_alignment --hardware 1 --backend realsense
+```
+
+The RealSense backend uses the Intel RealSense SDK Python bindings and is the
+recommended physical-camera mode for RGB-depth distance tracking.
+
+Quanser and QLabs support may still require the separate Quanser software
+installation. Those Quanser packages are not treated as ordinary pip
+dependencies in this repo.
+
 Before using the virtual arm, open the QLabs QArm workspace. Before using real
 hardware, power on and connect the physical QArm.
 

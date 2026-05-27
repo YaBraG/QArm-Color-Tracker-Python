@@ -1,8 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+:: Folder containing this setup script and requirements.txt
+set "SCRIPT_DIR=%~dp0"
+
 :: Specify the path to the log file
-set "LOG_FILE=%CD%\software_requirements.log"
+set "LOG_FILE=%SCRIPT_DIR%software_requirements.log"
 
 :: Check if the log file exists
 if not exist "%LOG_FILE%" (
@@ -151,7 +154,7 @@ if defined PYTHONPATH (
 )
 
 :: Define the path to requirements.txt
-set "REQUIREMENTS_FILE=requirements.txt"
+set "REQUIREMENTS_FILE=%SCRIPT_DIR%requirements.txt"
 
 echo.
 echo.

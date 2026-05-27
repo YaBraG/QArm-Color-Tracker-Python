@@ -2,6 +2,7 @@ numpy<2.4
 scipy
 pygit
 opencv-python
+pyrealsense2
 pytransform3d
 matplotlib
 PyQt6
