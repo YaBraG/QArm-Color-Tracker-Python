@@ -15,6 +15,9 @@ CAMERA_FPS = 30
 
 DEPTH_MIN_M = 0.15
 DEPTH_MAX_M = 3.0
+
+# These offsets are only for the Quanser Camera3D/manual-offset backend.
+# They are not used by the RealSense aligned-depth backend.
 DEPTH_X_OFFSET = -25
 DEPTH_Y_OFFSET = -3
 

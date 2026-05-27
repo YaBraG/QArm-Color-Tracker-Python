@@ -12,11 +12,13 @@ Controls
 --------
 Left click        : select an RGB point.
 Right click or c  : clear the selected point.
+q or Esc          : quit.
+
+Quanser backend only:
 a / d             : decrease/increase depth_x_offset.
 w / s             : decrease/increase depth_y_offset.
 r                 : reset offset to qarm_core.config values.
 p                 : save current offset to qarm_core/config.py.
-q or Esc          : quit.
 """
 
 from __future__ import annotations
@@ -44,6 +46,10 @@ import numpy as np
 
 from qarm_core import config
 from qarm_core.camera.qarm_camera import QArmCamera
+from qarm_core.camera.realsense_aligned_camera import (
+    RealSenseAlignedCamera,
+    get_depth_at_rgb_pixel as get_aligned_depth_at_rgb_pixel,
+)
 
 
 RGB_WINDOW_NAME = "QArm RGB Alignment"
@@ -192,30 +198,52 @@ def make_depth_display(depth_m, min_depth_m, max_depth_m):
     return cv2.applyColorMap(display_gray, cv2.COLORMAP_TURBO)
 
 
-def draw_rgb_view(frame_bgr, selected_point, sample, depth_x_offset, depth_y_offset):
+def draw_rgb_view(
+    frame_bgr,
+    selected_point,
+    sample,
+    depth_x_offset,
+    depth_y_offset,
+    backend,
+):
     """Draw the clicked point and current depth result on the RGB image."""
 
     display = frame_bgr.copy()
     cv2.rectangle(display, (8, 8), (display.shape[1] - 8, 68), (0, 0, 0), -1)
 
     if selected_point is None:
-        text = "Left click to sample depth | a/d/w/s adjust | p save | q quit"
+        if backend == "quanser":
+            text = "Left click to sample depth | a/d/w/s adjust | p save | q quit"
+        else:
+            text = "Left click to sample aligned depth | c clear | q quit"
     else:
         rgb_x, rgb_y = selected_point
         cv2.drawMarker(display, (rgb_x, rgb_y), (0, 255, 255), cv2.MARKER_CROSS, 24, 2)
         cv2.circle(display, (rgb_x, rgb_y), 8, (0, 255, 255), 2)
 
         if sample is not None and sample["valid"]:
-            text = (
-                f"RGB ({sample['rgb_x']},{sample['rgb_y']}) -> "
-                f"Depth ({sample['depth_x']},{sample['depth_y']}) | "
-                f"{sample['distance_m']:.3f} m | "
-                f"offset ({depth_x_offset:+d},{depth_y_offset:+d})"
-            )
+            if backend == "quanser":
+                text = (
+                    f"RGB ({sample['rgb_x']},{sample['rgb_y']}) -> "
+                    f"Depth ({sample['depth_x']},{sample['depth_y']}) | "
+                    f"{sample['distance_m']:.3f} m | "
+                    f"offset ({depth_x_offset:+d},{depth_y_offset:+d})"
+                )
+            else:
+                text = (
+                    f"Aligned RGB/depth ({sample['rgb_x']},{sample['rgb_y']}) | "
+                    f"{sample['distance_m']:.3f} m"
+                )
         elif sample is not None:
-            text = f"{sample['message']} | offset ({depth_x_offset:+d},{depth_y_offset:+d})"
+            if backend == "quanser":
+                text = f"{sample['message']} | offset ({depth_x_offset:+d},{depth_y_offset:+d})"
+            else:
+                text = sample["message"]
         else:
-            text = f"Waiting for depth | offset ({depth_x_offset:+d},{depth_y_offset:+d})"
+            if backend == "quanser":
+                text = f"Waiting for depth | offset ({depth_x_offset:+d},{depth_y_offset:+d})"
+            else:
+                text = "Waiting for aligned depth"
 
     cv2.putText(
         display,
@@ -230,7 +258,7 @@ def draw_rgb_view(frame_bgr, selected_point, sample, depth_x_offset, depth_y_off
     return display
 
 
-def draw_depth_view(depth_color, selected_point, sample):
+def draw_depth_view(depth_color, selected_point, sample, backend):
     """Draw the RGB point and offset depth point on the depth display."""
 
     display = depth_color.copy()
@@ -240,15 +268,22 @@ def draw_depth_view(depth_color, selected_point, sample):
         cv2.drawMarker(display, (rgb_x, rgb_y), (0, 255, 255), cv2.MARKER_CROSS, 18, 2)
 
     if sample is not None:
-        depth_x = sample["depth_x"]
-        depth_y = sample["depth_y"]
+        # Quanser mode uses a shifted depth point. RealSense aligned mode uses
+        # the same x, y for the RGB pixel and depth pixel.
+        depth_x = sample.get("depth_x", sample["rgb_x"])
+        depth_y = sample.get("depth_y", sample["rgb_y"])
         cv2.drawMarker(display, (depth_x, depth_y), (255, 255, 255), cv2.MARKER_CROSS, 24, 2)
         cv2.circle(display, (depth_x, depth_y), 8, (255, 255, 255), 2)
 
     cv2.rectangle(display, (8, 8), (display.shape[1] - 8, 62), (0, 0, 0), -1)
+    if backend == "quanser":
+        depth_text = "Yellow = RGB click | White = sampled depth pixel"
+    else:
+        depth_text = "Aligned RealSense depth: yellow and white should overlap"
+
     cv2.putText(
         display,
-        "Yellow = RGB click | White = depth sample after offset",
+        depth_text,
         (16, 42),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.54,
@@ -298,25 +333,36 @@ def save_depth_offset_to_config(depth_x_offset, depth_y_offset):
     )
 
 
-def print_controls(depth_x_offset, depth_y_offset):
+def print_controls(backend, depth_x_offset, depth_y_offset):
     """Print controls and the starting offset."""
 
     print("")
     print("QArm RGB/depth alignment tool running.")
+    print(f"Camera backend: {backend}")
     print("Left click an object in the RGB window.")
-    print("Depth mapping: depth_x = rgb_x + depth_x_offset")
-    print("               depth_y = rgb_y + depth_y_offset")
+
+    if backend == "quanser":
+        print("Quanser Camera3D manual offset mode.")
+        print("Depth mapping: depth_x = rgb_x + depth_x_offset")
+        print("               depth_y = rgb_y + depth_y_offset")
+    else:
+        print("RealSense aligned-depth mode.")
+        print("Depth mapping: aligned_depth_m[rgb_y, rgb_x]")
     print("")
     print("Controls:")
     print("  Left click       select RGB point")
     print("  Right click or c clear selected point")
-    print("  a / d            decrease/increase depth_x_offset")
-    print("  w / s            decrease/increase depth_y_offset")
-    print("  r                reset offset to config values")
-    print("  p                save current offset to qarm_core/config.py")
+    if backend == "quanser":
+        print("  a / d            decrease/increase depth_x_offset")
+        print("  w / s            decrease/increase depth_y_offset")
+        print("  r                reset offset to config values")
+        print("  p                save current offset to qarm_core/config.py")
+    else:
+        print("  a/d/w/s/r/p      no manual offset is used in RealSense aligned mode")
     print("  q or Esc         quit")
     print("")
-    print(f"Starting depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+    if backend == "quanser":
+        print(f"Starting depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
     print("")
 
 
@@ -329,6 +375,7 @@ def run_depth_alignment_tool(args):
 
     depth_x_offset = int(args.depth_x_offset)
     depth_y_offset = int(args.depth_y_offset)
+    backend = args.backend
 
     def on_mouse(event, x, y, flags, userdata):  # noqa: ARG001
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -340,16 +387,23 @@ def run_depth_alignment_tool(args):
             latest_sample[0] = None
             print("Cleared selected point.")
 
-    camera = QArmCamera(
-        hardware=int(args.hardware),
-        device_id=int(args.device_id),
-        video_port=int(args.video_port),
-        width=int(args.width),
-        height=int(args.height),
-        fps=int(args.fps),
-        depth_min_m=float(args.min_depth),
-        depth_max_m=float(args.max_depth),
-    )
+    if backend == "quanser":
+        camera = QArmCamera(
+            hardware=int(args.hardware),
+            device_id=int(args.device_id),
+            video_port=int(args.video_port),
+            width=int(args.width),
+            height=int(args.height),
+            fps=int(args.fps),
+            depth_min_m=float(args.min_depth),
+            depth_max_m=float(args.max_depth),
+        )
+    else:
+        camera = RealSenseAlignedCamera(
+            width=int(args.width),
+            height=int(args.height),
+            fps=int(args.fps),
+        )
 
     cv2.namedWindow(RGB_WINDOW_NAME, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(RGB_WINDOW_NAME, on_mouse)
@@ -359,7 +413,7 @@ def run_depth_alignment_tool(args):
 
     try:
         camera.open()
-        print_controls(depth_x_offset, depth_y_offset)
+        print_controls(backend, depth_x_offset, depth_y_offset)
 
         while True:
             rgb_frame, depth_m = camera.read()
@@ -374,27 +428,44 @@ def run_depth_alignment_tool(args):
 
             if selected_point[0] is not None:
                 rgb_x, rgb_y = selected_point[0]
-                sample = get_depth_at_rgb_pixel(
-                    depth_m,
-                    rgb_x,
-                    rgb_y,
-                    depth_x_offset,
-                    depth_y_offset,
-                    int(args.window_size),
-                    float(args.min_depth),
-                    float(args.max_depth),
-                )
+                if backend == "quanser":
+                    sample = get_depth_at_rgb_pixel(
+                        depth_m,
+                        rgb_x,
+                        rgb_y,
+                        depth_x_offset,
+                        depth_y_offset,
+                        int(args.window_size),
+                        float(args.min_depth),
+                        float(args.max_depth),
+                    )
+                else:
+                    sample = get_aligned_depth_at_rgb_pixel(
+                        depth_m,
+                        rgb_x,
+                        rgb_y,
+                        int(args.window_size),
+                        float(args.min_depth),
+                        float(args.max_depth),
+                    )
                 latest_sample[0] = sample
 
                 if time.time() - last_print_time[0] >= float(args.print_interval):
                     if sample["valid"]:
-                        print(
-                            f"RGB ({sample['rgb_x']}, {sample['rgb_y']}) -> "
-                            f"Depth ({sample['depth_x']}, {sample['depth_y']}) | "
-                            f"{sample['distance_m']:.3f} m | "
-                            f"offset ({depth_x_offset:+d}, {depth_y_offset:+d}) | "
-                            f"{sample['valid_pixel_count']} valid px"
-                        )
+                        if backend == "quanser":
+                            print(
+                                f"RGB ({sample['rgb_x']}, {sample['rgb_y']}) -> "
+                                f"Depth ({sample['depth_x']}, {sample['depth_y']}) | "
+                                f"{sample['distance_m']:.3f} m | "
+                                f"offset ({depth_x_offset:+d}, {depth_y_offset:+d}) | "
+                                f"{sample['valid_pixel_count']} valid px"
+                            )
+                        else:
+                            print(
+                                f"Aligned depth at RGB ({sample['rgb_x']}, {sample['rgb_y']}) | "
+                                f"{sample['distance_m']:.3f} m | "
+                                f"{sample['valid_pixel_count']} valid px"
+                            )
                     else:
                         print(sample["message"])
                     last_print_time[0] = time.time()
@@ -405,13 +476,19 @@ def run_depth_alignment_tool(args):
                 latest_sample[0],
                 depth_x_offset,
                 depth_y_offset,
+                backend,
             )
             cv2.imshow(RGB_WINDOW_NAME, rgb_display)
 
             if args.show_depth:
                 depth_color = make_depth_display(depth_m, args.min_depth, args.max_depth)
                 if depth_color is not None:
-                    depth_display = draw_depth_view(depth_color, selected_point[0], latest_sample[0])
+                    depth_display = draw_depth_view(
+                        depth_color,
+                        selected_point[0],
+                        latest_sample[0],
+                        backend,
+                    )
                     cv2.imshow(DEPTH_WINDOW_NAME, depth_display)
 
             key = cv2.waitKey(1) & 0xFF
@@ -423,23 +500,41 @@ def run_depth_alignment_tool(args):
                 latest_sample[0] = None
                 print("Cleared selected point.")
             elif key == ord("a"):
-                depth_x_offset -= 1
-                print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                if backend == "quanser":
+                    depth_x_offset -= 1
+                    print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                else:
+                    print("RealSense backend is already aligned; manual offset is not used.")
             elif key == ord("d"):
-                depth_x_offset += 1
-                print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                if backend == "quanser":
+                    depth_x_offset += 1
+                    print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                else:
+                    print("RealSense backend is already aligned; manual offset is not used.")
             elif key == ord("w"):
-                depth_y_offset -= 1
-                print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                if backend == "quanser":
+                    depth_y_offset -= 1
+                    print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                else:
+                    print("RealSense backend is already aligned; manual offset is not used.")
             elif key == ord("s"):
-                depth_y_offset += 1
-                print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                if backend == "quanser":
+                    depth_y_offset += 1
+                    print(f"Depth offset: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                else:
+                    print("RealSense backend is already aligned; manual offset is not used.")
             elif key == ord("r"):
-                depth_x_offset = int(config.DEPTH_X_OFFSET)
-                depth_y_offset = int(config.DEPTH_Y_OFFSET)
-                print(f"Reset depth offset to config: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                if backend == "quanser":
+                    depth_x_offset = int(config.DEPTH_X_OFFSET)
+                    depth_y_offset = int(config.DEPTH_Y_OFFSET)
+                    print(f"Reset depth offset to config: ({depth_x_offset:+d}, {depth_y_offset:+d})")
+                else:
+                    print("RealSense backend is already aligned; manual offset is not used.")
             elif key == ord("p"):
-                save_depth_offset_to_config(depth_x_offset, depth_y_offset)
+                if backend == "quanser":
+                    save_depth_offset_to_config(depth_x_offset, depth_y_offset)
+                else:
+                    print("RealSense backend is already aligned; there is no manual offset to save.")
 
     finally:
         camera.close()
@@ -451,6 +546,12 @@ def build_arg_parser():
 
     parser = argparse.ArgumentParser(
         description="Click an RGB pixel and sample depth at the offset depth pixel."
+    )
+    parser.add_argument(
+        "--backend",
+        choices=("quanser", "realsense"),
+        default="quanser",
+        help="Camera backend: quanser keeps manual offsets, realsense uses aligned depth.",
     )
     parser.add_argument("--hardware", type=int, default=1, choices=(0, 1))
     parser.add_argument("--device-id", type=int, default=config.REAL_QARM_DEVICE_ID)
